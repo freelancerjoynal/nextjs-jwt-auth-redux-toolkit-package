@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async () => {
     try {
-      const data = await apiFetch("/profile");
+      const data = await apiFetch("/auth/profile");
       setUser(data.user);
     } catch (error) {
       setUser(null);
