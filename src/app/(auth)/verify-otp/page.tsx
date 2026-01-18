@@ -12,13 +12,14 @@ function OTPForm() {
   const { setUser } = useAuth();
 
   const email = searchParams.get("email");
-  const flow = searchParams.get("flow") || "login"; // signup or login flow detection
+  const flow = searchParams.get("flow") || "login"; 
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // determine the correct endpoint based on flow
-    const endpoint = flow === "signup" ? "/auth/verify-otp" : "/auth/verify-login-otp";
+    // Change: Match your backend routes exactly
+    // Signup flow uses /auth/verify, Login flow uses /auth/verify-login-otp
+    const endpoint = flow === "signup" ? "/auth/verify" : "/auth/verify-login-otp";
 
     try {
       const data = await apiFetch(endpoint, {
@@ -26,21 +27,18 @@ function OTPForm() {
         body: JSON.stringify({ email, otp }),
       });
 
-      // debug: check what data is coming from backend
       console.log("Verification Response:", data);
 
       if (data && data.user) {
-        // successfully setting the global user state
         setUser(data.user);
-        router.push("/dashboard");
       } else {
-        // if backend sends user data directly without the 'user' key
         setUser(data);
-        router.push("/dashboard");
       }
       
+      router.push("/dashboard");
     } catch (err: any) {
-      alert(err.message || "Invalid OTP");
+      // If apiFetch throws an error, it might be due to the 500 error from the server
+      alert(err.message || "An error occurred during verification");
     }
   };
 
