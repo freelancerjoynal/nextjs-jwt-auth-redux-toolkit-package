@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, Mail, CheckCircle, ShieldCheck } from "lucide-react";
+import { Loader2, Lock, Mail, CheckCircle, ShieldCheck, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ResetPasswordPage() {
@@ -14,6 +14,7 @@ export default function ResetPasswordPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(30);
+  const [pageTimeout, setPageTimeout] = useState(60); // 1 minute = 60 seconds
   const [canResend, setCanResend] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +42,18 @@ export default function ResetPasswordPage() {
     }
   }, [countdown, canResend]);
 
+  // Page timeout countdown (1 minute)
+  useEffect(() => {
+    if (pageTimeout > 0 && email && !success) {
+      const timer = setTimeout(() => setPageTimeout(pageTimeout - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (pageTimeout === 0 && email && !success) {
+      // Auto-redirect to forgot-password page after 1 minute
+      sessionStorage.removeItem("reset_email");
+      router.push("/forgot-password");
+    }
+  }, [pageTimeout, email, success, router]);
+
   // Clear resend success message after 3 seconds
   useEffect(() => {
     if (resendSuccess) {
@@ -54,7 +67,9 @@ export default function ResetPasswordPage() {
   // Focus first input on mount
   useEffect(() => {
     if (email && inputRefs.current[0]) {
-      inputRefs.current[0]?.focus();
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
     }
   }, [email]);
 
@@ -68,14 +83,18 @@ export default function ResetPasswordPage() {
 
     // Auto-focus next input
     if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+      setTimeout(() => {
+        inputRefs.current[index + 1]?.focus();
+      }, 10);
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     // Handle backspace
     if (e.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      setTimeout(() => {
+        inputRefs.current[index - 1]?.focus();
+      }, 10);
     }
   };
 
@@ -94,7 +113,9 @@ export default function ResetPasswordPage() {
     
     // Focus next available input
     const nextIndex = Math.min(pastedData.length, 5);
-    inputRefs.current[nextIndex]?.focus();
+    setTimeout(() => {
+      inputRefs.current[nextIndex]?.focus();
+    }, 10);
   };
 
   const handleReset = async (e: React.FormEvent) => {
@@ -129,7 +150,9 @@ export default function ResetPasswordPage() {
       setError(err.message || "Invalid OTP. Please try again.");
       // Clear OTP on error
       setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
     } finally {
       setIsLoading(false);
     }
@@ -152,12 +175,21 @@ export default function ResetPasswordPage() {
       setOtp(["", "", "", "", "", ""]);
       setCountdown(30);
       setCanResend(false);
-      inputRefs.current[0]?.focus();
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
     } catch (err: any) {
       setError(err.message || "Failed to resend OTP. Please try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Format time to MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Show loading while checking email
@@ -257,10 +289,25 @@ export default function ResetPasswordPage() {
       >
         <Card className="shadow-xl border border-gray-200 bg-white">
           <CardHeader className="space-y-1 text-center">
+            {/* Page timeout indicator */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="absolute top-4 right-4"
+            >
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full">
+                <Clock className="h-3 w-3 text-amber-600" />
+                <span className="text-xs font-medium text-amber-700">
+                  {formatTime(pageTimeout)}
+                </span>
+              </div>
+            </motion.div>
+            
             <motion.div
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
+              transition={{ delay: 0.2 }}
               className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4"
             >
               <ShieldCheck className="h-6 w-6 text-blue-600" />
@@ -268,7 +315,7 @@ export default function ResetPasswordPage() {
             <motion.div
               initial={{ y: -10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.3 }}
             >
               <CardTitle className="text-2xl font-bold text-gray-900">
                 Reset Your Password
@@ -321,10 +368,31 @@ export default function ResetPasswordPage() {
                 )}
               </AnimatePresence>
               
+              {/* Page timeout warning */}
+              {pageTimeout <= 30 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-amber-50 border border-amber-200 rounded-lg p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-600" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800">
+                        Page expires in {formatTime(pageTimeout)}
+                      </p>
+                      <p className="text-xs text-amber-700">
+                        Complete verification before time runs out
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.4 }}
                 className="space-y-4"
               >
                 <div className="flex justify-center space-x-2">
@@ -357,7 +425,7 @@ export default function ResetPasswordPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
+                  transition={{ delay: 0.6 }}
                   className="flex justify-between items-center"
                 >
                   <p className="text-sm text-gray-500">
@@ -396,7 +464,7 @@ export default function ResetPasswordPage() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
+                transition={{ delay: 0.7 }}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
               >
@@ -419,7 +487,7 @@ export default function ResetPasswordPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
+                transition={{ delay: 0.8 }}
                 whileHover={{ scale: 1.02 }}
                 className="bg-blue-50 border border-blue-200 rounded-lg p-4"
               >
@@ -430,13 +498,14 @@ export default function ResetPasswordPage() {
                   <li>• After verification, a new password will be generated</li>
                   <li>• You'll receive the new password via email</li>
                   <li>• You can change it anytime from your dashboard</li>
+                  <li>• This page will expire in {formatTime(pageTimeout)}</li>
                 </ul>
               </motion.div>
 
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
+                transition={{ delay: 0.9 }}
                 className="text-center"
               >
                 <Button
@@ -458,11 +527,14 @@ export default function ResetPasswordPage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.9 }}
+              transition={{ delay: 1 }}
               className="text-xs text-gray-500 text-center w-full"
             >
               <p>
                 Check your spam folder if you don't see the email
+              </p>
+              <p className="mt-1 text-amber-600 font-medium">
+                ⏰ Page will auto-close in {formatTime(pageTimeout)}
               </p>
             </motion.div>
           </CardFooter>
